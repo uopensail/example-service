@@ -25,7 +25,6 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/gin-gonic/gin"
-	"github.com/uopensail/example-service/services"
 	"github.com/uopensail/ulib/commonconfig"
 	"github.com/uopensail/ulib/prome"
 	"github.com/uopensail/ulib/utils"
@@ -134,9 +133,8 @@ func run(cfg commonconfig.ServerConfig, logDir string, isrv IService) IService {
 	options := make([]kratos.Option, 0)
 
 	serverName := cfg.Name
-	services := services.NewServices()
-	grpcSrv := newGRPC(cfg.GRPCPort, services.RegisterGrpc)
-	httpSrv := newHTTPServe(cfg.HTTPPort, services.RegisterGinRouter)
+	grpcSrv := newGRPC(cfg.GRPCPort, isrv.RegisterGrpc)
+	httpSrv := newHTTPServe(cfg.HTTPPort, isrv.RegisterGinRouter)
 
 	options = append(options, kratos.Name(serverName), kratos.Version(__GITCOMMITINFO__), kratos.Server(
 		httpSrv,
@@ -144,7 +142,7 @@ func run(cfg commonconfig.ServerConfig, logDir string, isrv IService) IService {
 	))
 	appReg := kratosAppRegister{}
 	options = append(options, kratos.BeforeStart(func(ctx context.Context) error {
-		services.Init("microservices/"+serverName, etcdCli, &appReg)
+		isrv.Init("microservices/"+serverName, etcdCli, &appReg)
 		return nil
 	}))
 
@@ -160,7 +158,7 @@ func run(cfg commonconfig.ServerConfig, logDir string, isrv IService) IService {
 		}
 	}()
 
-	return services
+	return isrv
 }
 
 func newHTTPServe(httpPort int, registerFunc func(*gin.Engine)) *khttp.Server {
