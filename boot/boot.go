@@ -140,7 +140,9 @@ func run(cfg commonconfig.ServerConfig, logDir string, isrv IService) IService {
 		httpSrv,
 		grpcSrv,
 	))
-	appReg := kratosAppRegister{}
+	appReg := kratosAppRegister{
+		etcCli: etcdCli
+	}
 	options = append(options, kratos.BeforeStart(func(ctx context.Context) error {
 		isrv.Init("microservices/"+serverName, etcdCli, &appReg)
 		return nil
