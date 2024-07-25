@@ -116,7 +116,9 @@ func (reg *kratosAppRegister) Deregister(ctx context.Context) error {
 
 func run(cfg commonconfig.ServerConfig, logDir string, isrv IService) IService {
 
-	zlog.InitLogger(cfg.ProjectName, cfg.Debug, logDir)
+	if len(logDir) > 0 {
+		zlog.InitLogger(cfg.ProjectName, cfg.Debug, logDir)
+	}
 
 	var etcdCli *etcdclient.Client
 	if len(cfg.Endpoints) > 0 {
@@ -167,7 +169,7 @@ func newHTTPServe(httpPort int, registerFunc func(*gin.Engine)) *khttp.Server {
 	ginEngine := gin.New()
 	ginEngine.Use(gin.Recovery())
 
-	url := ginSwagger.URL(fmt.Sprintf("swagger/doc.json")) // The url pointing to API definition
+	url := ginSwagger.URL("swagger/doc.json") // The url pointing to API definition
 	ginEngine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, url))
 
 	ginEngine.GET("/ping", PingPongHandler)
@@ -200,16 +202,19 @@ func runPProf(port int) {
 }
 
 func runProme(projectName string, port int) *prome.Exporter {
-	//prome的打点
-	promeExport := prome.NewExporter(projectName)
-	go func() {
-		err := promeExport.Start(port)
-		if err != nil {
-			panic(err)
-		}
-	}()
+	if port > 0 {
+		// prome的打点
+		promeExport := prome.NewExporter(projectName)
+		go func() {
+			err := promeExport.Start(port)
+			if err != nil {
+				panic(err)
+			}
+		}()
 
-	return promeExport
+		return promeExport
+	}
+	return nil
 }
 
 func Load(cfg commonconfig.ServerConfig, logDir string, isrv IService) {
@@ -229,6 +234,9 @@ func Load(cfg commonconfig.ServerConfig, logDir string, isrv IService) {
 	fmt.Println(time.Now().Format("2006-01-02 15:04:05"), " app running....")
 	<-signalChanel
 	application.Close()
-	promeExport.Close()
+	if promeExport != nil {
+		promeExport.Close()
+	}
+
 	fmt.Println(time.Now().Format("2006-01-02 15:04:05"), " app exit....")
 }
